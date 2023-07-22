@@ -137,6 +137,7 @@ def genMeaningMCQuestion(df,QuestionType='ALL',Q=-1):
         vocabulary=selectedRow['vocabulary']
         meaning=selectedRow['meaning']
         sentence=selectedRow['sentence']
+        sentence=generateExampleFromChatGPT(vocabulary,meaning)
         Question='vocabulary: '+vocabulary+'\n'+'Sentence:\n'+str(sentence)+'\n'
         vocabularyA=df.iloc[getNeighbourNum(rowNo,10,len(df)) ]['meaning']
         vocabularyB=df.iloc[getNeighbourNum(rowNo,10,len(df))]['meaning']
@@ -155,7 +156,17 @@ def genMeaningMCQuestion(df,QuestionType='ALL',Q=-1):
             optionString=optionString+str(i+1)+':'+'\n'+answerList[i]+'\n'
         print(Question)
         print(optionString)
-        variable = input('Your Answer: ')
+        
+        speak=True
+        filename=generateSentenceSpeaking(sentence,vocabulary)
+        variable=''
+        while speak:
+            
+            # Playing the converted file
+            playsound(filename)
+            variable=input('w,a,s,d for answer; elsewise repeat the sentence')
+            speak = False if variable in ['w','a','s','d'] else True
+            
         inputAanswer=-1
         if variable in keymMapping:
             inputAanswer=keymMapping[variable]
