@@ -17,6 +17,7 @@ from os.path import exists
 
 
 APIFile='ChatGPTAPI.txt'
+GPT_API_RETRIAL_TIME=3
 if exists(APIFile):
     with open(APIFile) as f:
         lines = f.readlines()
@@ -29,9 +30,11 @@ else:
 
 warnings.filterwarnings("ignore")
 df = pd.read_excel(r'Vocabulary.xlsx')
+df = df.fillna('')
 dfToBerestudy=df.iloc[0:0] #empty DF
 
 keymMapping={'a':2,'s':3,'d':4,'w':1}
+reverseMapping={1:'w',2:'a',3:'s',4:'d'}
 def genMCQuestion(df,QuestionType='ALL',Q=-1):
 
     random.seed()
@@ -75,7 +78,7 @@ def genMCQuestion(df,QuestionType='ALL',Q=-1):
         number_list=random.shuffle(answerList)
         optionString=""
         for i in range(len(answerList)):
-            optionString=optionString+str(i+1)+':'+'\n'+answerList[i]+'\n'
+            optionString=optionString+str(i+1)+f'({reverseMapping[i+1]}):'+'\n'+answerList[i]+'\n'
         print(Question)
         exampleFromChatGPT=generateExampleFromChatGPT(vocabulary,meaning)
         print('Sentence:\n'+str(exampleFromChatGPT.replace(vocabulary, "________"))+'\n\n\n')
@@ -153,7 +156,7 @@ def genMeaningMCQuestion(df,QuestionType='ALL',Q=-1):
         number_list=random.shuffle(answerList)
         optionString=""
         for i in range(len(answerList)):
-            optionString=optionString+str(i+1)+':'+'\n'+answerList[i]+'\n'
+            optionString=optionString+str(i+1)+f'({reverseMapping[i+1]}):'+'\n'+answerList[i]+'\n'
         print(Question)
         print(optionString)
         
@@ -164,8 +167,20 @@ def genMeaningMCQuestion(df,QuestionType='ALL',Q=-1):
             
             # Playing the converted file
             playsound(filename)
-            variable=input('w,a,s,d for answer; elsewise repeat the sentence')
-            speak = False if variable in ['w','a','s','d'] else True
+            variable=input('w,a,s,d for answer;r for generating antoher sentence; otherwise repeat the sentence\n')
+            speak = False if variable in ['w','a','s','d','r'] else True
+            
+        while variable =='r':
+            sentence=generateExampleFromChatGPT(vocabulary,meaning)
+            speak=True
+            filename=generateSentenceSpeaking(sentence,vocabulary)
+            variable=''
+            while speak:
+                print(sentence)
+                # Playing the converted file
+                playsound(filename)
+                variable=input('w,a,s,d for answer;r for generating antoher sentence; otherwise repeat the sentence\n')
+                speak = False if variable in ['w','a','s','d','r'] else True
             
         inputAanswer=-1
         if variable in keymMapping:
@@ -240,8 +255,10 @@ def generateExampleFromChatGPT(vocab,meaning):
         "Theater backstage",
         "Beach resort",
         "Office",
+        "Supermarket",
         "School",
         "Space station"]
+        
         
     random.seed()
 
@@ -256,15 +273,20 @@ It should be not more than 1 sentence and not more than 30 words.
 The example should be related to {place}
 """
 
-
-    completion = openai.ChatCompletion.create(
-      model = 'gpt-3.5-turbo',
-      messages = [
-        {'role': 'user', 'content': user_message}
-      ],
-      temperature =0.9,
-    max_tokens=100
-    )
+    for i in range(GPT_API_RETRIAL_TIME):
+        try:
+            completion = openai.ChatCompletion.create(
+              model = 'gpt-3.5-turbo',
+              messages = [
+                {'role': 'user', 'content': user_message}
+              ],
+              temperature =0.9,
+            max_tokens=100
+            )
+            break
+        
+        except Exception as e:
+            pass
     return completion['choices'][0]['message']['content']
 
 try:
