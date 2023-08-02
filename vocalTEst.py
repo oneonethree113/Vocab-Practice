@@ -79,8 +79,8 @@ def genMCQuestion(df,QuestionType='ALL',Q=-1):
         optionString=""
         for i in range(len(answerList)):
             optionString=optionString+str(i+1)+f'({reverseMapping[i+1]}):'+'\n'+answerList[i]+'\n'
-        print(Question)
         exampleFromChatGPT=generateExampleFromChatGPT(vocabulary,meaning)
+        print(Question)
         print('Sentence:\n'+str(exampleFromChatGPT.replace(vocabulary, "________"))+'\n\n\n')
         print(optionString)
         variable = input('Your Answer: ')
@@ -126,7 +126,7 @@ def genMeaningMCQuestion(df,QuestionType='ALL',Q=-1):
     if questionPara <0:
          
         if(QuestionType=='ALL'):
-            questionPara=int(math.sqrt(len(df)))
+            questionPara=int(math.sqrt(len(df))*1.5)
         elif(QuestionType=='ThisWeek'):
             questionPara=int(len(df)*1/5)
         elif(QuestionType=='Latest'):
@@ -237,7 +237,7 @@ def generateSentenceSpeaking(sentence,vocab):
     myobj.save(filename)
       
     return filename
-
+lastPlace='Dummy'
 def generateExampleFromChatGPT(vocab,meaning):
 
     placeList=["School",
@@ -259,10 +259,13 @@ def generateExampleFromChatGPT(vocab,meaning):
         "School",
         "Space station"]
         
-        
+    global lastPlace
     random.seed()
+    while (True):
 
-    place=placeList[random.randrange(len(placeList))]
+        place=placeList[random.randrange(len(placeList))]
+        if lastPlace!=place:
+            break
     user_message = f"""
 I am preparing vocab practice. 
 I will tell you what the vocab and its meaning are.
@@ -281,12 +284,14 @@ The example should be related to {place}
                 {'role': 'user', 'content': user_message}
               ],
               temperature =0.9,
-            max_tokens=100
+            max_tokens=100,
+            timeout=5
             )
             break
         
         except Exception as e:
             pass
+    lastPlace=place
     return completion['choices'][0]['message']['content']
 
 try:
@@ -305,9 +310,10 @@ try:
     input('Any key for next part:ALL meaning')
 
     genMeaningMCQuestion(df,'ALL')
-    input('Any key for next part:ALL Vocab')
-
-    genMCQuestion(df,'ALL')
+    
+    input('Any key for next part:Restudy meaning')
+    
+    genMeaningMCQuestion(dfToBerestudy,QuestionType='Latest')
 except Exception as e: 
     print(e)
     
