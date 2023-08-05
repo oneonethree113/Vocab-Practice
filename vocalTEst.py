@@ -33,6 +33,7 @@ df = pd.read_excel(r'Vocabulary.xlsx')
 df = df.fillna('')
 dfToBerestudy=df.iloc[0:0] #empty DF
 
+playSoundMode=True
 keymMapping={'a':2,'s':3,'d':4,'w':1}
 reverseMapping={1:'w',2:'a',3:'s',4:'d'}
 def genMCQuestion(df,QuestionType='ALL',Q=-1):
@@ -40,6 +41,7 @@ def genMCQuestion(df,QuestionType='ALL',Q=-1):
     random.seed()
     questionPara=Q
     global dfToBerestudy
+    global playSoundMode
     if QuestionType !='ALL':
          
         if(QuestionType=='ThisWeek'):
@@ -83,7 +85,14 @@ def genMCQuestion(df,QuestionType='ALL',Q=-1):
         print(Question)
         print('Sentence:\n'+str(exampleFromChatGPT.replace(vocabulary, "________"))+'\n\n\n')
         print(optionString)
-        variable = input('Your Answer: ')
+        variable=''
+        while True:
+        
+            variable = input('Your Answer: ')
+            if variable in ['w','a','s','d']:
+                break
+            elif variable =='p':
+                playSoundMode= not playSoundMode
         inputAanswer=-1
         if variable in keymMapping:
             inputAanswer=keymMapping[variable]
@@ -103,13 +112,14 @@ def genMCQuestion(df,QuestionType='ALL',Q=-1):
             print('answer:'+str(answer))
             print('\n')
             dfToBerestudy=dfToBerestudy.append(df.iloc[rowNo])
-        speak=True
-        filename=generateSentenceSpeaking(exampleFromChatGPT,vocabulary)
-        while speak:
-            
-            # Playing the converted file
-            playsound(filename)
-            speak = False if input('Any enter for next')=='' else True
+        if playSoundMode:
+            filename=generateSentenceSpeaking(exampleFromChatGPT,vocabulary)
+            while True:
+                
+                # Playing the converted file
+                playsound(filename)
+                if input('Any enter for next')=='':
+                    break
         
         
             
@@ -117,6 +127,7 @@ def genMeaningMCQuestion(df,QuestionType='ALL',Q=-1):
     random.seed()
     questionPara=Q
     global dfToBerestudy
+    global playSoundMode
     if QuestionType !='ALL':
          
         if(QuestionType=='ThisWeek'):
@@ -134,7 +145,6 @@ def genMeaningMCQuestion(df,QuestionType='ALL',Q=-1):
         else:
             questionPara=int(len(df)/4)
     for Q in range(questionPara):
-        random.seed()
         rowNo=random.randrange(len(df))
         selectedRow=df.iloc[rowNo]
         vocabulary=selectedRow['vocabulary']
@@ -160,27 +170,26 @@ def genMeaningMCQuestion(df,QuestionType='ALL',Q=-1):
         print(Question)
         print(optionString)
         
-        speak=True
         filename=generateSentenceSpeaking(sentence,vocabulary)
-        variable=''
-        while speak:
-            
-            # Playing the converted file
-            playsound(filename)
-            variable=input('w,a,s,d for answer;r for generating antoher sentence; otherwise repeat the sentence\n')
-            speak = False if variable in ['w','a','s','d','r'] else True
-            
-        while variable =='r':
-            sentence=generateExampleFromChatGPT(vocabulary,meaning)
-            speak=True
-            filename=generateSentenceSpeaking(sentence,vocabulary)
-            variable=''
-            while speak:
-                print(sentence)
+        while True:
+            if playSoundMode:
+                
                 # Playing the converted file
                 playsound(filename)
-                variable=input('w,a,s,d for answer;r for generating antoher sentence; otherwise repeat the sentence\n')
-                speak = False if variable in ['w','a','s','d','r'] else True
+            
+            variable=input('w,a,s,d for answer;r for generating antoher sentence; p for switch the speech mode;\n')
+            if variable=='p':
+                
+                
+                # Playing the converted file
+                playSoundMode= not playSoundMode
+            elif variable=='r':
+                sentence=generateExampleFromChatGPT(vocabulary,meaning)
+                print(sentence)
+                filename=generateSentenceSpeaking(sentence,vocabulary)
+            elif variable in ['w','a','s','d']:
+                break
+            
             
         inputAanswer=-1
         if variable in keymMapping:
@@ -208,7 +217,7 @@ def getNeighbourNum(rowNo,neighbourRange,Cap):
     while(result<0 or result>Cap-2):
         result=rowNo+random.randint(0-neighbourRange, neighbourRange)
     try:
-        X=df.iloc[result]['meaning']
+        _=df.iloc[result]['meaning']
     except:
         print('result')
         print(result)
@@ -257,7 +266,8 @@ def generateExampleFromChatGPT(vocab,meaning):
         "Office",
         "Supermarket",
         "School",
-        "Space station"]
+        "Space station",
+        "Body check"]
         
     global lastPlace
     random.seed()
@@ -311,9 +321,6 @@ try:
 
     genMeaningMCQuestion(df,'ALL')
     
-    input('Any key for next part:Restudy meaning')
-    
-    genMeaningMCQuestion(dfToBerestudy,QuestionType='Latest')
 except Exception as e: 
     print(e)
     
