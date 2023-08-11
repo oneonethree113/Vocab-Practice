@@ -1,0 +1,8 @@
+azure_storage==0.37.0
+gTTS==2.3.1
+openai==0.27.2
+pandas==2.0.3
+pandas==1.4.2
+pandas==1.5.3
+playsound==1.2.2
+pydub==0.25.1

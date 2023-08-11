@@ -13,25 +13,45 @@ from playsound import playsound
 # play the converted audio
 import os
 from os.path import exists
+import configparser
+import azure.cognitiveservices.speech as speechsdk
 
-
-
-APIFile='ChatGPTAPI.txt'
+from io import BytesIO
+from pydub import AudioSegment
+configFile='config.ini'
 GPT_API_RETRIAL_TIME=3
-if exists(APIFile):
-    with open(APIFile) as f:
-        lines = f.readlines()
-    openai.api_key = lines[0]
+if exists(configFile):
+    # Create a config object
+    config = configparser.ConfigParser()
+
+    # Read the config file
+    config.read(configFile)
+    openai.api_key = config.get('API', 'OpenAIAPI')
+    azureSpeechAPI = config.get('API', 'azureSpeechAPI')
+    service_region=config.get('API', 'service_region')
+    voice=config.get('API', 'voice')
 else:
+    config = configparser.ConfigParser()
+    config.add_section('API')
     API = input('Input Your ChatGPI API: ')
     openai.api_key=API
-    with open(APIFile, 'w') as f:
-        f.write(API)
+    config.set('API', 'OpenAIAPI', API)
+    azureSpeechAPI = input('Input Your Azure Speech API: ')
+    config.set('API', 'azureSpeechAPI', azureSpeechAPI)
+    service_region = input('Input Your service_region: ')
+    config.set('API', 'service_region', service_region)
+    voice = input('Input Your voice: ')
+    config.set('API', 'voice', voice)
+    # Write the config file to disk
+    with open(configFile, 'w') as configfile:
+        config.write(configfile)
 
 warnings.filterwarnings("ignore")
+
 df = pd.read_excel(r'Vocabulary.xlsx')
 df = df.fillna('')
 dfToBerestudy=df.iloc[0:0] #empty DF
+speech_synthesizer=None
 
 playSoundMode=True
 keymMapping={'a':2,'s':3,'d':4,'w':1}
@@ -227,7 +247,7 @@ def getNeighbourNum(rowNo,neighbourRange,Cap):
         print(rowNo)
     return result
 result=0
-def generateSentenceSpeaking(sentence,vocab):
+def generateSentenceSpeaking2(sentence,vocab):
     # Language in which you want to convert
     language = 'en'
       
@@ -244,6 +264,42 @@ def generateSentenceSpeaking(sentence,vocab):
     filename="".join(letter for letter in filename if letter.isalnum())
     filename=os.path.join(directory,'SampleSentence', filename+'.mp3')
     myobj.save(filename)
+      
+    return filename
+def generateSentenceSpeaking(sentence,vocab):
+    """performs speech synthesis using SSML"""
+    ssml_string = f"""
+    <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+      <voice name="{voice}">
+        <prosody rate="-20.00%" pitch="+20.00%">
+          {sentence}
+        </prosody>
+      </voice>
+    </speak>
+    """
+    speech_config = speechsdk.SpeechConfig(subscription=azureSpeechAPI, region=service_region)
+    # Creates a speech synthesizer using the default speaker as audio output.
+    speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
+    result = speech_synthesizer.speak_ssml_async(ssml_string).get()
+    
+      
+    # Saving the converted audio in a mp3 file named
+    # welcome 
+    directory = os.getcwd()
+    filename=vocab+'_'+datetime.now().strftime("%Y%m%d%H%M%S")+'sentence'
+    filename="".join(letter for letter in filename if letter.isalnum())
+    filename=os.path.join(directory,'SampleSentence', filename+'.mp3')
+    if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+        # Get audio data
+        audio_data = result.audio_data
+        # Create .wav file in memory
+        wav_file = BytesIO()
+        wav_file.write(audio_data)
+        wav_file.seek(0)
+        # Load .wav file with pydub
+        sound = AudioSegment.from_wav(wav_file)
+        # Save as .wav file
+        sound.export(filename, format="mp3")
       
     return filename
 lastPlace='Dummy'
@@ -300,15 +356,15 @@ The example should be related to {place}
             break
         
         except Exception as e:
+            print('timeout. Going to retry')
             pass
     lastPlace=place
     return completion['choices'][0]['message']['content']
-
 try:
     genMeaningMCQuestion(df,'Latest')
         
 
-    input('Any key for next part:This week Vocab')
+    input('Any key for next part:Today Vocab')
     genMCQuestion(df,'Latest')
 
     input('Any key for next part:This week meaning')
